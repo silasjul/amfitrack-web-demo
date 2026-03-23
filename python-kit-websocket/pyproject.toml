@@ -1,0 +1,11 @@
+[project]
+name = "python-kit-websocket"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "amfiprot>=0.1.14",
+    "amfiprot-amfitrack>=0.0.1a15",
+    "fastapi[standard]>=0.135.1",
+]
