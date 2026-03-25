@@ -47,10 +47,7 @@ export class PacketDecoder {
   public getDecodedPayload(): DecodedPayload {
     const payloadBytes = this.packet.getPayload();
     const decoder = this.getDecoder();
-    return {
-      payloadType: this.payloadType,
-      data: decoder.getDecoded(payloadBytes),
-    } as DecodedPayload;
+    return decoder.getDecoded(payloadBytes) as DecodedPayload;
   }
 
   private getDecoder() {
@@ -66,11 +63,11 @@ export class PacketDecoder {
 }
 
 export type DecodedPayload =
-  | { payloadType: PayloadType.SOURCE_MEASUREMENT; data: SourceMeasurementData }
-  | { payloadType: PayloadType.SOURCE_CALIBRATION; data: SourceCalibrationData }
-  | { payloadType: PayloadType.EMF_IMU_FRAME_ID; data: EmfImuFrameIdData };
+  | SourceMeasurementData
+  | SourceCalibrationData
+  | EmfImuFrameIdData;
 
-const decoderMap: Record<PayloadType, IPayloadDecoder<DecodedPayload["data"]>> = {
+const decoderMap: Record<PayloadType, IPayloadDecoder<DecodedPayload>> = {
   [PayloadType.SOURCE_MEASUREMENT]: new SourceMeasurementPayload(),
   [PayloadType.SOURCE_CALIBRATION]: new SourceCalibrationPayload(),
   [PayloadType.EMF_IMU_FRAME_ID]: new EmfImuFrameIdPayload(),

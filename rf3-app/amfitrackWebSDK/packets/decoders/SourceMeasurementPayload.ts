@@ -1,5 +1,6 @@
 import { IPayloadDecoder } from "../PacketDecoder";
 import { LE } from "../../config";
+import { parseImuData, parseMagnetoData } from "./dataParsers";
 
 export type SourceMeasurementData = ReturnType<SourceMeasurementPayload["getDecoded"]>;
 
@@ -17,21 +18,9 @@ export class SourceMeasurementPayload implements IPayloadDecoder<SourceMeasureme
       z: view.getFloat32(8, LE),
     };
 
-    const imu = {
-      acc_x: view.getInt16(12, LE) * 0.000122, // In g
-      acc_y: view.getInt16(14, LE) * 0.000122,
-      acc_z: view.getInt16(16, LE) * 0.000122,
-      gyro_x: view.getInt16(18, LE) * 0.07, // In deg per sec
-      gyro_y: view.getInt16(20, LE) * 0.07,
-      gyro_z: view.getInt16(22, LE) * 0.07,
-    };
+    const imu = parseImuData(view, 12);
 
-    const MAG_SCALE = 0.012207;
-    const magneto = {
-      mag_x: view.getInt16(24, LE) * MAG_SCALE,
-      mag_y: view.getInt16(26, LE) * MAG_SCALE,
-      mag_z: view.getInt16(28, LE) * MAG_SCALE,
-    };
+    const magneto = parseMagnetoData(view, 24);
 
     const temperature = payload[30] * 0.5 - 30;
     const sourceStatus = payload[31];
