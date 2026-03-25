@@ -15,11 +15,10 @@ export function useAmfitrack(positionScale: number = POSITION_SCALE) {
   const modelRef = useRef<THREE.Group | null>(null);
 
   // Devices
-  const hubRef = useRef<HIDDevice | null>(null);
-  const sourceRef = useRef<HIDDevice | null>(null);
+  const hubRef = useRef<HIDDevice | null>(null); // uses sensor id
+  const sourceRef = useRef<HIDDevice | null>(null); // uses source id
 
   const [status, setStatus] = useState("Disconnected");
-  const [devices, setDevices] = useState<HIDDevice[]>([]);
 
   // Position
   const latestSensorPositionRef = useRef(new THREE.Vector3());
@@ -29,6 +28,9 @@ export function useAmfitrack(positionScale: number = POSITION_SCALE) {
   const rotationOffsetRef = useRef(
     new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0, "XYZ")),
   );
+
+  // Reading
+  const [isReading, setIsReading] = useState(false);
 
   /**
    * Methods
@@ -50,14 +52,29 @@ export function useAmfitrack(positionScale: number = POSITION_SCALE) {
   }, []);
 
   const autoConnectAuthorizedDevices = async () => {
-    const devices =
-      await amfitrackWebRef.current.autoConnectAuthorizedDevices();
-    if (devices) {
-      setDevices(devices);
-    }
+    const devices = await amfitrackWebRef.current.autoConnectAuthorizedDevices();
+    devices?.forEach((device) => {
+      if (device.productId === PRODUCT_ID_SENSOR) {
+        hubRef.current = device;
+      } else if (device.productId === PRODUCT_ID_SOURCE) {
+        sourceRef.current = device;
+      }
+    });
     setStatus("Connected");
   };
-  
+
+  const startReading = async (device: HIDDevice | null) => {
+    if (!device) return;
+    console.log("Starting reading for device:", device);
+    await amfitrackWebRef.current.startReading(device);
+    setIsReading(true);
+  };
+
+  const stopReading = () => {
+    amfitrackWebRef.current.stopReading();
+    setIsReading(false);
+  };
+
   useEffect(() => {
     autoConnectAuthorizedDevices();
   }, [])
@@ -94,6 +111,13 @@ export function useAmfitrack(positionScale: number = POSITION_SCALE) {
 
   return {
     modelRef,
+    status,
+    isReading,
+    hubRef,
+    sourceRef,
     resetCenter,
+    startReading,
+    stopReading,
+    requestConnectionDevice,
   };
 }
