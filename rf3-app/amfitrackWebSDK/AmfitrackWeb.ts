@@ -1,4 +1,6 @@
 import { VENDOR_ID, PRODUCT_ID_SENSOR, PRODUCT_ID_SOURCE } from "./config";
+import { PacketDecoder } from "./packets/PacketDecoder";
+import { Packet } from "./packets/Packet";
 
 class AmfitrackWeb {
   private sensorDevice: HIDDevice | null = null;
@@ -98,7 +100,8 @@ class AmfitrackWeb {
     console.log(`Starting reads for ${device.productName}...`);
 
     this.inputReportHandler = (event: HIDInputReportEvent) => {
-      this.processData(event.reportId, event.data);
+      const bytes = new Uint8Array(event.data.buffer);
+      this.processData(bytes);
     };
 
     device.addEventListener("inputreport", this.inputReportHandler);
@@ -118,9 +121,16 @@ class AmfitrackWeb {
     }
   }
 
-  private processData(reportId: number, data: DataView) {
-    console.log(`Report ID: ${reportId}`);
-    console.log("Raw Bytes:", new Uint8Array(data.buffer));
+  private processData(bytes: Uint8Array) {
+    const packet = new Packet(bytes);
+    const packetDecoder = new PacketDecoder(packet);
+    const payloadType = packetDecoder.getPayloadType();
+    const decodedHeader = packetDecoder.getDecodedHeader();
+    const decodedPayload = packetDecoder.getDecodedPayload();
+    console.log(`Packet type: ${payloadType}`, {
+      header: decodedHeader,
+      payload: decodedPayload,
+    });
   }
 }
 
