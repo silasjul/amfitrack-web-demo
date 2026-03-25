@@ -97,8 +97,6 @@ class AmfitrackWeb {
       await device.open();
     }
 
-    console.log(`Starting reads for ${device.productName}...`);
-
     this.inputReportHandler = (event: HIDInputReportEvent) => {
       const bytes = new Uint8Array(event.data.buffer);
       this.processData(bytes);
@@ -127,7 +125,7 @@ class AmfitrackWeb {
     const payloadType = packetDecoder.getPayloadType();
     const decodedHeader = packetDecoder.getDecodedHeader();
     const decodedPayload = packetDecoder.getDecodedPayload();
-    console.log(`Packet type: ${payloadType}`, {
+    console.log(`Packet ${payloadType.type}`, {
       header: decodedHeader,
       payload: decodedPayload,
     });

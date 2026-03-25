@@ -1,8 +1,17 @@
 import { Packet } from "./Packet";
-import { SourceMeasurementPayload } from "./decoders/SourceMeasurementPayload";
+import {
+  SourceCalibrationPayload,
+  SourceCalibrationData,
+  SourceMeasurementPayload,
+  SourceMeasurementData,
+  EmfImuFrameIdPayload,
+  EmfImuFrameIdData,
+} from "../packets/decoders";
 
 enum PayloadType {
+  SOURCE_CALIBRATION = 0x23,
   SOURCE_MEASUREMENT = 0x24,
+  EMF_IMU_FRAME_ID = 0x1A
 }
 
 export interface IPayloadDecoder<T> {
@@ -35,18 +44,34 @@ export class PacketDecoder {
     };
   }
 
-  public getDecodedPayload() {
+  public getDecodedPayload(): DecodedPayload {
     const payloadBytes = this.packet.getPayload();
+    const decoder = this.getDecoder();
+    return {
+      payloadType: this.payloadType,
+      data: decoder.getDecoded(payloadBytes),
+    } as DecodedPayload;
+  }
 
-    switch (this.payloadType) {
-      case PayloadType.SOURCE_MEASUREMENT:
-        return new SourceMeasurementPayload().getDecoded(payloadBytes);
-      default:
-        throw new Error(`Unknown payload type: ${this.payloadType}`);
-    }
+  private getDecoder() {
+    const decoder = decoderMap[this.payloadType];
+    if (!decoder)
+      throw new Error(`Unknown payload type: ${this.payloadType}`);
+    return decoder;
   }
 
   public getPayloadType() {
-    return this.payloadType;
+    return { type: PayloadType[this.payloadType], value: this.payloadType };
   }
 }
+
+export type DecodedPayload =
+  | { payloadType: PayloadType.SOURCE_MEASUREMENT; data: SourceMeasurementData }
+  | { payloadType: PayloadType.SOURCE_CALIBRATION; data: SourceCalibrationData }
+  | { payloadType: PayloadType.EMF_IMU_FRAME_ID; data: EmfImuFrameIdData };
+
+const decoderMap: Record<PayloadType, IPayloadDecoder<DecodedPayload["data"]>> = {
+  [PayloadType.SOURCE_MEASUREMENT]: new SourceMeasurementPayload(),
+  [PayloadType.SOURCE_CALIBRATION]: new SourceCalibrationPayload(),
+  [PayloadType.EMF_IMU_FRAME_ID]: new EmfImuFrameIdPayload(),
+};

@@ -1,6 +1,7 @@
 import { IPayloadDecoder } from "../PacketDecoder";
+import { LE } from "../../config";
 
-type SourceMeasurementData = ReturnType<SourceMeasurementPayload["getDecoded"]>;
+export type SourceMeasurementData = ReturnType<SourceMeasurementPayload["getDecoded"]>;
 
 export class SourceMeasurementPayload implements IPayloadDecoder<SourceMeasurementData> {
   public getDecoded(payload: Uint8Array) {
@@ -9,7 +10,6 @@ export class SourceMeasurementPayload implements IPayloadDecoder<SourceMeasureme
       payload.byteOffset,
       payload.byteLength,
     );
-    const LE = true;
 
     const current = {
       x: view.getFloat32(0, LE),

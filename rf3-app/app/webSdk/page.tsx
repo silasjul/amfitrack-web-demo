@@ -38,6 +38,7 @@ export default function WebSdkPage() {
 
   const startReading = async (device: HIDDevice | null) => {
     if (!device) return;
+    console.log("Starting reading for device:", device);
     await amfitrackWebRef.current.startReading(device);
     setIsReading(true);
   };
