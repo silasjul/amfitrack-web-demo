@@ -8,7 +8,7 @@ import {
   EmfImuFrameIdData,
 } from "../packets/decoders";
 
-enum PayloadType {
+export enum PayloadType {
   SOURCE_CALIBRATION = 0x23,
   SOURCE_MEASUREMENT = 0x24,
   EMF_IMU_FRAME_ID = 0x1A

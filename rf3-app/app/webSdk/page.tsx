@@ -4,9 +4,11 @@ import { useAmfitrack } from "@/hooks/useAmfitrack";
 import { Button } from "@/components/ui/button";
 
 export default function WebSdkPage() {
-  const { status, hubRef, startReading, stopReading, requestConnectionDevice } =
+  const { status, hubRef, startReading, stopReading, requestConnectionDevice, metalDistortion } =
     useAmfitrack();
 
+  
+    
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <Button onClick={() => requestConnectionDevice()}>Request Connection</Button>

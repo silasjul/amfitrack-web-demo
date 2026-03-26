@@ -4,15 +4,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { AmfitrackWeb } from "@/amfitrackWebSDK";
 import { PRODUCT_ID_SENSOR, PRODUCT_ID_SOURCE } from "@/amfitrackWebSDK/config";
+import { EmfImuFrameIdData } from "@/amfitrackWebSDK/packets/decoders";
 
 const POSITION_SCALE = 0.01;
 
-export function useAmfitrack(positionScale: number = POSITION_SCALE) {
+export function useAmfitrack() {
   /**
    * State
    */
   const amfitrackWebRef = useRef(new AmfitrackWeb());
   const modelRef = useRef<THREE.Group | null>(null);
+  const metalDistortionRef = useRef(0);
 
   // Devices
   const hubRef = useRef<HIDDevice | null>(null); // uses sensor id
@@ -52,7 +54,8 @@ export function useAmfitrack(positionScale: number = POSITION_SCALE) {
   }, []);
 
   const autoConnectAuthorizedDevices = async () => {
-    const devices = await amfitrackWebRef.current.autoConnectAuthorizedDevices();
+    const devices =
+      await amfitrackWebRef.current.autoConnectAuthorizedDevices();
     devices?.forEach((device) => {
       if (device.productId === PRODUCT_ID_SENSOR) {
         hubRef.current = device;
@@ -77,37 +80,41 @@ export function useAmfitrack(positionScale: number = POSITION_SCALE) {
 
   useEffect(() => {
     autoConnectAuthorizedDevices();
-  }, [])
+  }, []);
 
-  // useEffect(() => {
-  //   const sensor = null;
+  useEffect(() => {
+    const sdk = amfitrackWebRef.current;
 
-  //   // sensor position
-  //   const sensorPosition = new THREE.Vector3(
-  //     -sensor.position.y,
-  //     sensor.position.z,
-  //     -sensor.position.x,
-  //   ); // remaps sensor coordinates to threejs coordinates
-  //   latestSensorPositionRef.current.copy(sensorPosition);
+    const handleEmfImuFrameId = (data: EmfImuFrameIdData) => {
 
-  //   const relativePosition = sensorPosition
-  //     .clone()
-  //     .sub(centerOffsetRef.current);
-  //   const modelPosition = relativePosition
-  //     .clone()
-  //     .multiplyScalar(positionScale);
-  //   modelRef.current.position.copy(modelPosition);
+      metalDistortionRef.current = data.metalDistortion / 255;
 
-  //   // sensor quaternion
-  //   const sensorQuaternion = new THREE.Quaternion(
-  //     -sensor.quaternion.y,
-  //     sensor.quaternion.z,
-  //     -sensor.quaternion.x,
-  //     sensor.quaternion.w,
-  //   ).normalize();
-  //   sensorQuaternion.multiply(rotationOffsetRef.current);
-  //   modelRef.current.quaternion.copy(sensorQuaternion);
-  // }, []);
+      if (!modelRef.current) return;
+
+      // remap sensor coordinates to three.js coordinates
+      const sensorPosition = new THREE.Vector3(
+        -data.position.y,
+        data.position.z,
+        -data.position.x,
+      );
+      latestSensorPositionRef.current.copy(sensorPosition);
+
+      const relativePosition = sensorPosition.clone().sub(centerOffsetRef.current);
+      modelRef.current.position.copy(relativePosition.multiplyScalar(POSITION_SCALE));
+
+      const sensorQuaternion = new THREE.Quaternion(
+        -data.quaternion.y,
+        data.quaternion.z,
+        -data.quaternion.x,
+        data.quaternion.w,
+      ).normalize();
+      sensorQuaternion.multiply(rotationOffsetRef.current);
+      modelRef.current.quaternion.copy(sensorQuaternion);
+    };
+
+    sdk.on("emfImuFrameId", handleEmfImuFrameId);
+    return () => sdk.off("emfImuFrameId", handleEmfImuFrameId);
+  }, []);
 
   return {
     modelRef,
@@ -115,6 +122,7 @@ export function useAmfitrack(positionScale: number = POSITION_SCALE) {
     isReading,
     hubRef,
     sourceRef,
+    metalDistortionRef,
     resetCenter,
     startReading,
     stopReading,

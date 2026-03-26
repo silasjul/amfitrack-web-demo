@@ -11,12 +11,30 @@ import {
 import { useControls, folder, button } from "leva";
 import Lightsaber from "@/components/lightsaber/Lightsaber";
 import Light from "@/components/Light";
-import { useState } from "react";
-import { useSensorTracking } from "@/hooks/useSensorTracking";
+import { useEffect, useState, useRef } from "react";
+import { useAmfitrack } from "@/hooks/useAmfitrack";
 
 export default function Home() {
+  const lightsaberRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false);
-  const { modelRef, resetCenter } = useSensorTracking();
+  const {
+    modelRef,
+    resetCenter,
+    startReading,
+    stopReading,
+    hubRef,
+    metalDistortionRef,
+  } = useAmfitrack();
+
+  useEffect(() => {
+    if (hubRef.current) {
+      startReading(hubRef.current);
+    }
+
+    return () => {
+      stopReading();
+    };
+  }, [hubRef.current]);
 
   const { mode, exposure, enabled, pivotOffsetY, files } = useControls({
     toneMapping: folder({
@@ -88,7 +106,7 @@ export default function Home() {
             onDragEnd={() => setIsDragging(false)}
           >
             <group position-z={pivotOffsetY}>
-              <Lightsaber />
+              <Lightsaber metalDistortionRef={metalDistortionRef} />
             </group>
           </PivotControls>
         </group>

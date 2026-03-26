@@ -1,15 +1,42 @@
 import { VENDOR_ID, PRODUCT_ID_SENSOR, PRODUCT_ID_SOURCE } from "./config";
-import { PacketDecoder } from "./packets/PacketDecoder";
+import { PacketDecoder, PayloadType } from "./packets/PacketDecoder";
 import { Packet } from "./packets/Packet";
+import {
+  SourceMeasurementData,
+  SourceCalibrationData,
+  EmfImuFrameIdData,
+} from "./packets/decoders";
+
+type AmfitrackEventMap = {
+  sourceMeasurement: SourceMeasurementData;
+  sourceCalibration: SourceCalibrationData;
+  emfImuFrameId: EmfImuFrameIdData;
+};
 
 class AmfitrackWeb {
   private sensorDevice: HIDDevice | null = null;
   private sourceDevice: HIDDevice | null = null;
 
+  private listeners: { [K in keyof AmfitrackEventMap]: Set<(data: AmfitrackEventMap[K]) => void> } = {
+    sourceMeasurement: new Set(),
+    sourceCalibration: new Set(),
+    emfImuFrameId: new Set(),
+  };
+
+  public on<K extends keyof AmfitrackEventMap>(event: K, handler: (data: AmfitrackEventMap[K]) => void): void {
+    (this.listeners[event] as Set<(data: AmfitrackEventMap[K]) => void>).add(handler);
+  }
+
+  public off<K extends keyof AmfitrackEventMap>(event: K, handler: (data: AmfitrackEventMap[K]) => void): void {
+    (this.listeners[event] as Set<(data: AmfitrackEventMap[K]) => void>).delete(handler);
+  }
+
+  private emit<K extends keyof AmfitrackEventMap>(event: K, data: AmfitrackEventMap[K]): void {
+    (this.listeners[event] as Set<(data: AmfitrackEventMap[K]) => void>).forEach((h) => h(data));
+  }
+
   private inputReportHandler: ((event: HIDInputReportEvent) => void) | null =
     null;
-
-  constructor() {}
 
   public async requestConnection(): Promise<HIDDevice | null> {
     try {
@@ -122,13 +149,20 @@ class AmfitrackWeb {
   private processData(bytes: Uint8Array) {
     const packet = new Packet(bytes);
     const packetDecoder = new PacketDecoder(packet);
-    const payloadType = packetDecoder.getPayloadType();
-    const decodedHeader = packetDecoder.getDecodedHeader();
-    const decodedPayload = packetDecoder.getDecodedPayload();
-    console.log(`Packet ${payloadType.type}`, {
-      header: decodedHeader,
-      payload: decodedPayload,
-    });
+    const { value: payloadType } = packetDecoder.getPayloadType();
+    const payload = packetDecoder.getDecodedPayload();
+
+    switch (payloadType) {
+      case PayloadType.EMF_IMU_FRAME_ID:
+        this.emit("emfImuFrameId", payload as EmfImuFrameIdData);
+        break;
+      case PayloadType.SOURCE_MEASUREMENT:
+        this.emit("sourceMeasurement", payload as SourceMeasurementData);
+        break;
+      case PayloadType.SOURCE_CALIBRATION:
+        this.emit("sourceCalibration", payload as SourceCalibrationData);
+        break;
+    }
   }
 }
 
